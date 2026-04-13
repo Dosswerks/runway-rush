@@ -88,6 +88,7 @@ const CUSTOM_ASSETS = {
     gateSound: 'assets/gate.mp3',
     collectSound: 'assets/collect.mp3',
     levelUpSound: 'assets/levelup.mp3',
+    gameOverSound: 'assets/gameover.mp3',
 };
 // =============================================================
 const canvas = document.getElementById('game');
@@ -298,6 +299,7 @@ function killPassenger() {
     if (game.lives <= 0) {
         game.over = true;
         stopMusic();
+        playSound('gameOver');
     }
     resetPassenger();
     updateUI();
@@ -354,6 +356,7 @@ function update(dt) {
         game.timeLeft = 0;
         game.over = true;
         stopMusic();
+        playSound('gameOver');
         updateUI();
         return;
     }
@@ -893,6 +896,7 @@ async function init() {
     loadSound('gate', CUSTOM_ASSETS.gateSound);
     loadSound('collect', CUSTOM_ASSETS.collectSound);
     loadSound('levelUp', CUSTOM_ASSETS.levelUpSound);
+    loadSound('gameOver', CUSTOM_ASSETS.gameOverSound);
     loadMusic(CUSTOM_ASSETS.backgroundMusic);
     initGame();
     requestAnimationFrame(gameLoop);
