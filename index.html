@@ -24,14 +24,13 @@ canvas{display:block;touch-action:none;-webkit-touch-callout:none;-webkit-user-s
 .has-box-art #splash-title{display:none}
 .hidden{display:none!important}
 @media(max-width:660px){
-    canvas{width:100vw;height:100vw}
+    canvas{width:100vw;height:auto}
     #game-wrapper{width:100vw;border-width:1px}
-    #ui{font-size:11px;padding:4px 6px}
-    #gate-display{font-size:13px;padding:4px 0}
-    #start-screen h1{font-size:28px}
-    #start-screen p{font-size:11px}
-    #links{padding:6px 0}
-    #links a{font-size:14px!important}
+    #ui{font-size:12px;padding:6px 6px}
+    #gate-display{font-size:14px;padding:4px 0}
+    #start-screen h1{font-size:30px}
+    #start-screen p{font-size:12px}
+    #links a{font-size:15px!important}
 }
 </style>
 </head>
@@ -45,7 +44,7 @@ canvas{display:block;touch-action:none;-webkit-touch-callout:none;-webkit-user-s
 <span>LEVEL: <span id="level">1</span></span>
 </div>
 <div id="game-wrapper">
-<canvas id="game" width="640" height="640"></canvas>
+<canvas id="game" width="640" height="480"></canvas>
 <div id="start-screen">
 <div id="box-art-container" class="hidden"><img id="box-art" src="" alt="Runway Rush"></div>
 <h1 id="splash-title">RUNWAY RUSH</h1>
@@ -86,7 +85,7 @@ const CUSTOM_ASSETS = {
 // =============================================================
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
-const W = 640, H = 640;
+const W = 640, H = 480;
 
 // High-DPI canvas scaling
 const dpr = window.devicePixelRatio || 1;
