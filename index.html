@@ -461,17 +461,17 @@ function draw() {
                     ctx.drawImage(images.gateFilled, gx + 4, y + 2, gw - 8, LANE_H - 4);
                 } else if (game.gatesFilled[g]) {
                     ctx.fillStyle = '#aaddff';
-                    ctx.font = 'bold 14px Arial';
+                    ctx.font = 'bold 11px Arial';
                     ctx.textAlign = 'center';
-                    ctx.fillText('BOARDED', gx + gw/2, y + LANE_H/2 + 5);
+                    ctx.fillText('BOARDED', gx + gw/2, y + LANE_H/2 + 4);
                     ctx.textAlign = 'left';
                 } else {
                     ctx.fillStyle = '#fff';
-                    ctx.font = 'bold 14px Arial';
+                    ctx.font = 'bold 10px Arial';
                     ctx.textAlign = 'center';
-                    ctx.fillText('GATE', gx + gw/2, y + 16);
-                    ctx.font = 'bold 20px Arial';
-                    ctx.fillText(g + 1, gx + gw/2, y + 36);
+                    ctx.fillText('GATE', gx + gw/2, y + 12);
+                    ctx.font = 'bold 14px Arial';
+                    ctx.fillText(g + 1, gx + gw/2, y + LANE_H - 4);
                     ctx.textAlign = 'left';
                 }
             }
