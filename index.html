@@ -592,6 +592,8 @@ function draw() {
                     const startY = 13 * LANE_H;
                     if (r === 13) {
                         ctx.drawImage(images.startArea, 0, startY, W, LANE_H * 3);
+                        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+                        ctx.fillRect(0, startY, W, LANE_H * 3);
                     }
                 } else {
                     ctx.fillStyle = '#2a4a6a';
@@ -735,7 +737,7 @@ function drawFlipped(img, x, y, w, h, flipH) {
 
         ctx.fillStyle = '#fff';
         ctx.font = 'bold 24px Arial';
-        ctx.fillText('Your NPS Score:', W/2, topY + 50);
+        ctx.fillText('Your Net Promoter Score:', W/2, topY + 50);
 
         // NPS percentage — color coded
         const nps = game.npsScore;
@@ -773,7 +775,7 @@ function drawFlipped(img, x, y, w, h, flipH) {
         ctx.fillStyle = '#fff';
         ctx.font = 'bold 20px Arial';
         ctx.fillText('Score: ' + game.score, W/2, H/2 + 10);
-        ctx.fillText('Passengers Saved: ' + game.passengersSaved, W/2, H/2 + 40);
+        ctx.fillText('Passengers Boarded: ' + game.passengersSaved, W/2, H/2 + 40);
         ctx.fillText('Tap or press R to restart', W/2, H/2 + 74);
         ctx.textAlign = 'left';
     }
