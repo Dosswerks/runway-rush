@@ -55,6 +55,14 @@ canvas{display:block;width:100%;height:auto;touch-action:none;-webkit-touch-call
 <div id="links" style="width:640px;max-width:100vw;text-align:center;padding:10px 0;z-index:20;position:relative;">
     <a href="story.html" target="_blank" style="color:#ffcc00;font-size:18px;text-decoration:none;">📖 STORY AND INSTRUCTIONS 📖</a>
 </div>
+<div id="swipe-pad" style="display:none;width:100vw;height:120px;background:#1a1a3a;border-top:2px solid #333;position:relative;touch-action:none;-webkit-user-select:none;user-select:none;">
+    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;">
+        <div style="font-size:24px;color:#555;line-height:1;">▲</div>
+        <div style="font-size:24px;color:#555;line-height:1;">◄ &nbsp; ►</div>
+        <div style="font-size:24px;color:#555;line-height:1;">▼</div>
+        <div style="font-size:10px;color:#444;margin-top:4px;">SWIPE TO MOVE</div>
+    </div>
+</div>
 <script>
 // =============================================================
 // CUSTOMIZATION
@@ -822,6 +830,33 @@ canvas.addEventListener('click', () => {
     if (game.over) { initGame(); game.running = true; startMusic(); }
     if (game.levelComplete) { advanceLevel(); }
 });
+
+// Swipe pad for mobile
+const swipePad = document.getElementById('swipe-pad');
+if ('ontouchstart' in window) {
+    swipePad.style.display = 'block';
+}
+let padStartX = 0, padStartY = 0;
+swipePad.addEventListener('touchstart', e => {
+    e.preventDefault();
+    if (game.over) { initGame(); game.running = true; document.getElementById('gate-display').classList.remove('hidden'); startMusic(); return; }
+    if (game.levelComplete) { advanceLevel(); return; }
+    padStartX = e.touches[0].clientX;
+    padStartY = e.touches[0].clientY;
+}, { passive: false });
+swipePad.addEventListener('touchend', e => {
+    e.preventDefault();
+    const dx = e.changedTouches[0].clientX - padStartX;
+    const dy = e.changedTouches[0].clientY - padStartY;
+    const absDx = Math.abs(dx), absDy = Math.abs(dy);
+    if (Math.max(absDx, absDy) < 15) return;
+    if (absDx > absDy) {
+        movePlayer(dx > 0 ? 1 : -1, 0);
+    } else {
+        movePlayer(0, dy > 0 ? 1 : -1);
+    }
+}, { passive: false });
+swipePad.addEventListener('touchmove', e => { e.preventDefault(); }, { passive: false });
 
 document.addEventListener('touchmove', e => {
     if (e.target === canvas) e.preventDefault();
