@@ -54,6 +54,8 @@ canvas{display:block;width:100%;height:auto;touch-action:none;-webkit-touch-call
 </div>
 <div id="links" style="width:640px;max-width:100vw;text-align:center;padding:10px 0;z-index:20;position:relative;">
     <a href="story.html" target="_blank" style="color:#ffcc00;font-size:18px;text-decoration:none;">📖 STORY AND INSTRUCTIONS 📖</a>
+    <br>
+    <span style="color:#777;font-size:13px;">R to restart &nbsp;|&nbsp; Q to quit</span>
 </div>
 <div id="swipe-pad" style="display:none;width:100vw;height:360px;background:#1a1a3a;border-top:2px solid #333;position:relative;touch-action:none;-webkit-user-select:none;user-select:none;">
     <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;">
@@ -804,6 +806,13 @@ document.addEventListener('keydown', e => {
     if (e.key === 'ArrowLeft') { e.preventDefault(); movePlayer(-1, 0); }
     if (e.key === 'ArrowRight') { e.preventDefault(); movePlayer(1, 0); }
     if (e.key === ' ' && game.levelComplete) { e.preventDefault(); advanceLevel(); }
+    if (e.key === 'q' || e.key === 'Q') {
+        stopMusic();
+        initGame();
+        startScreen.classList.remove('hidden');
+        document.getElementById('gate-display').classList.add('hidden');
+        document.getElementById('gate-display').innerHTML = '✈ NOW DEPARTING: GATE <span id="target-gate">1</span> ✈';
+    }
     if (e.key === 'r' || e.key === 'R') { initGame(); game.running = true; startScreen.classList.add('hidden'); document.getElementById('gate-display').classList.remove('hidden'); startMusic(); }
 });
 
