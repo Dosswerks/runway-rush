@@ -34,6 +34,8 @@ canvas{display:block;width:100%;height:auto;touch-action:none;-webkit-touch-call
 #start-screen.has-box-art p:last-child{bottom:8px}
 .has-box-art #splash-title{display:none}
 .hidden{display:none!important}
+@keyframes blink-prompt{0%,49%{opacity:1}50%,100%{opacity:0}}
+#start-prompt{animation:blink-prompt 1s step-end infinite}
 @media(max-width:660px){
     #game-wrapper{width:100vw;border-width:1px}
     #ui{font-size:12px;padding:6px 6px}
@@ -60,7 +62,7 @@ canvas{display:block;width:100%;height:auto;touch-action:none;-webkit-touch-call
 <h1 id="splash-title">RUNWAY RUSH</h1>
 <p>Use arrow keys or swipe to move</p>
 <p>Get each passenger to their gate!</p>
-<p>Click or tap to start</p>
+<p id="start-prompt">Click or tap to start</p>
 </div>
 </div>
 <div id="links" style="width:640px;max-width:100vw;text-align:center;padding:8px 0;z-index:20;position:relative;">
@@ -154,7 +156,7 @@ function loadSound(k,s){if(!s)return;sounds[k]=new Audio(s);sounds[k].volume=0.5
 function loadMusic(s){if(!s)return;sounds.music=new Audio(s);sounds.music.loop=true;sounds.music.volume=0.3}
 function startMusic(){if(sounds.music&&sounds.music.paused)sounds.music.play().catch(()=>{})}
 function stopMusic(){if(sounds.music){sounds.music.pause();sounds.music.currentTime=0}}
-function playSound(k){if(sounds[k]){sounds[k].currentTime=0;sounds[k].play().catch(()=>{})}}
+function playSound(k){if(attractMode)return;if(sounds[k]){sounds[k].currentTime=0;sounds[k].play().catch(()=>{})}}
 
 // Passenger colors/styles
 const PCOLORS = ['#ff6644','#44aaff','#44dd44','#ffaa00','#dd44dd'];
@@ -316,6 +318,19 @@ function nextPassenger() {
     game.score += 100 + Math.ceil(game.timeLeft) * 10;
     playSound('gate');
     if (game.passengersSaved >= 5) {
+        if (attractMode) {
+            // During demo, just reset for another round instead of showing NPS
+            game.passengersSaved = 0;
+            game.gatesFilled = [false,false,false,false,false];
+            const go = [1,2,3,4,5];
+            for (let i = go.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[go[i],go[j]]=[go[j],go[i]]}
+            game.gateOrder = go;
+            game.currentTarget = go[0];
+            game.currentPassenger = game.passengerOrder[0];
+            resetPassenger();
+            updateUI();
+            return;
+        }
         // Calculate NPS — optimal is ~15 moves per passenger (75 total for 5)
         const optimalMoves = 75;
         const efficiency = Math.max(0, Math.min(100, Math.round((optimalMoves / Math.max(game.totalMoves, optimalMoves)) * 100)));
@@ -336,6 +351,7 @@ function nextPassenger() {
 }
 
 function killPassenger() {
+    if (attractMode) { resetPassenger(); return; }
     playSound('crash');
     game.lives--;
     if (game.lives <= 0) {
@@ -827,11 +843,60 @@ function drawFlipped(img, x, y, w, h, flipH) {
         }
         ctx.textAlign = 'left';
     }
+
+    // Attract mode overlay — "CLICK OR TAP TO START" flashing
+    if (attractMode && game.running) {
+        const blink = Math.floor(Date.now() / 500) % 2;
+        if (blink) {
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 15px Arial';
+            ctx.textAlign = 'center';
+            ctx.save();
+            ctx.shadowColor = 'rgba(0,0,0,0.9)';
+            ctx.shadowBlur = 6;
+            ctx.fillText('CLICK OR TAP TO START', W / 2, H - 10);
+            ctx.restore();
+            ctx.textAlign = 'left';
+        }
+    }
 }
 let lastTS = 0;
 function gameLoop(ts) {
     const dt = Math.min((ts - lastTS) / 1000, 0.05);
     lastTS = ts;
+
+    // Attract mode: title countdown
+    if (!game.running && !game.over && !attractMode) {
+        attractTimer--;
+        if (attractTimer <= 0) {
+            startAttractDemo();
+        }
+    }
+
+    // Attract mode: demo logic
+    if (attractMode) {
+        if (_attractBreakFlag) {
+            const shouldStart = _attractStartAfterBreak;
+            _attractBreakFlag = false;
+            _attractStartAfterBreak = false;
+            endAttractDemo();
+            if (shouldStart) {
+                startGame();
+            }
+            draw();
+            requestAnimationFrame(gameLoop);
+            return;
+        }
+        attractDemoTimer--;
+        if (attractDemoTimer <= 0) {
+            endAttractDemo();
+            draw();
+            requestAnimationFrame(gameLoop);
+            return;
+        }
+        attractAI();
+    }
+
     update(dt);
     draw();
     requestAnimationFrame(gameLoop);
@@ -839,6 +904,10 @@ function gameLoop(ts) {
 
 // Start
 function startGame() {
+    if (attractMode) {
+        endAttractDemo();
+    }
+    attractTimer = ATTRACT_TITLE_FRAMES;
     if (!game.running && !game.over) {
         game.running = true;
         startScreen.classList.add('hidden');
@@ -851,6 +920,7 @@ startScreen.addEventListener('touchstart', e => { e.preventDefault(); startGame(
 
 // Keyboard
 document.addEventListener('keydown', e => {
+    if (attractMode) return; // AI controls during demo; break handled by onAttractInput
     if (e.key === 'ArrowUp') { e.preventDefault(); movePlayer(0, -1); }
     if (e.key === 'ArrowDown') { e.preventDefault(); movePlayer(0, 1); }
     if (e.key === 'ArrowLeft') { e.preventDefault(); movePlayer(-1, 0); }
@@ -862,14 +932,17 @@ document.addEventListener('keydown', e => {
         startScreen.classList.remove('hidden');
         document.getElementById('gate-display').classList.add('hidden');
         document.getElementById('gate-display').innerHTML = '✈ NOW DEPARTING: GATE <span id="target-gate">1</span> ✈';
+        attractTimer = ATTRACT_TITLE_FRAMES;
+        attractPhase = 'title';
     }
-    if (e.key === 'r' || e.key === 'R') { initGame(); game.running = true; startScreen.classList.add('hidden'); document.getElementById('gate-display').classList.remove('hidden'); startMusic(); }
+    if (e.key === 'r' || e.key === 'R') { initGame(); game.running = true; startScreen.classList.add('hidden'); document.getElementById('gate-display').classList.remove('hidden'); startMusic(); attractTimer = ATTRACT_TITLE_FRAMES; }
 });
 
 // Touch — swipe
 let touchStartX = 0, touchStartY = 0;
 canvas.addEventListener('touchstart', e => {
     e.preventDefault();
+    if (attractMode) return; // break handled by onAttractInput
     if (game.over) { initGame(); game.running = true; startMusic(); return; }
     if (game.levelComplete) { advanceLevel(); return; }
     touchStartX = e.touches[0].clientX;
@@ -877,6 +950,7 @@ canvas.addEventListener('touchstart', e => {
 }, { passive: false });
 canvas.addEventListener('touchend', e => {
     e.preventDefault();
+    if (attractMode) return;
     const dx = e.changedTouches[0].clientX - touchStartX;
     const dy = e.changedTouches[0].clientY - touchStartY;
     const absDx = Math.abs(dx), absDy = Math.abs(dy);
@@ -889,6 +963,7 @@ canvas.addEventListener('touchend', e => {
 }, { passive: false });
 
 canvas.addEventListener('click', () => {
+    if (attractMode) return; // break handled by onAttractInput
     if (game.over) { initGame(); game.running = true; startMusic(); }
     if (game.levelComplete) { advanceLevel(); }
 });
@@ -901,6 +976,7 @@ if ('ontouchstart' in window) {
 let padStartX = 0, padStartY = 0;
 swipePad.addEventListener('touchstart', e => {
     e.preventDefault();
+    if (attractMode) return;
     if (game.over) { initGame(); game.running = true; document.getElementById('gate-display').classList.remove('hidden'); startMusic(); return; }
     if (game.levelComplete) { advanceLevel(); return; }
     padStartX = e.touches[0].clientX;
@@ -908,6 +984,7 @@ swipePad.addEventListener('touchstart', e => {
 }, { passive: false });
 swipePad.addEventListener('touchend', e => {
     e.preventDefault();
+    if (attractMode) return;
     const dx = e.changedTouches[0].clientX - padStartX;
     const dy = e.changedTouches[0].clientY - padStartY;
     const absDx = Math.abs(dx), absDy = Math.abs(dy);
@@ -923,6 +1000,133 @@ swipePad.addEventListener('touchmove', e => { e.preventDefault(); }, { passive: 
 document.addEventListener('touchmove', e => {
     if (e.target === canvas) e.preventDefault();
 }, { passive: false });
+// =============================================================
+// ATTRACT MODE
+// =============================================================
+const ATTRACT_TITLE_FRAMES = 480;  // ~8 seconds at 60fps
+const ATTRACT_DEMO_FRAMES = 900;   // ~15 seconds at 60fps
+let attractMode = false;
+let attractPhase = 'title';  // 'title' or 'demo'
+let attractTimer = ATTRACT_TITLE_FRAMES;
+let attractDemoTimer = 0;
+let attractFrameCount = 0;
+let _attractBreakFlag = false;
+let _attractStartAfterBreak = false;
+
+function startAttractDemo() {
+    attractPhase = 'demo';
+    attractDemoTimer = ATTRACT_DEMO_FRAMES;
+    attractMode = true;
+    attractFrameCount = 0;
+    _attractBreakFlag = false;
+    _attractStartAfterBreak = false;
+    // Set up a playable level 1
+    initGame();
+    buildLanes(1);
+    spawnCollectibles();
+    game.running = true;
+    game.over = false;
+    game.lives = 99;
+    game.timeLeft = 999;
+    // Hide start screen, show gate display
+    startScreen.classList.add('hidden');
+    document.getElementById('gate-display').classList.remove('hidden');
+    // Silent demo — no music
+    stopMusic();
+    updateUI();
+}
+
+function endAttractDemo() {
+    attractPhase = 'title';
+    attractTimer = ATTRACT_TITLE_FRAMES;
+    attractMode = false;
+    attractDemoTimer = 0;
+    _attractBreakFlag = false;
+    _attractStartAfterBreak = false;
+    // Reset to title screen
+    stopMusic();
+    initGame();
+    startScreen.classList.remove('hidden');
+    document.getElementById('gate-display').classList.add('hidden');
+    document.getElementById('gate-display').innerHTML = '✈ NOW DEPARTING: GATE <span id="target-gate">1</span> ✈';
+}
+
+function attractAI() {
+    if (!game.running || game.over || game.levelComplete) return;
+    attractFrameCount++;
+    if (game.moveCD > 0) return;
+
+    const pRow = game.row;
+    const targetGateIdx = game.currentTarget - 1;
+    const targetX = targetGateIdx * (W / 5) + (W / 5) / 2 - CELL / 2;
+
+    // Check if obstacle in next row up would hit us
+    const nextRow = pRow - 1;
+    let dangerAhead = false;
+    let safeMoveDir = 0;
+
+    if (nextRow >= 0 && nextRow < ROWS) {
+        const lane = lanes[nextRow];
+        if (lane.type !== 'safe' && lane.type !== 'gates') {
+            for (const obs of lane.obstacles) {
+                const obsLeft = obs.x - 8;
+                const obsRight = obs.x + obs.w + 8;
+                if (game.px + CELL > obsLeft && game.px < obsRight) {
+                    dangerAhead = true;
+                    const obsCenter = obs.x + obs.w / 2;
+                    safeMoveDir = game.px < obsCenter ? -1 : 1;
+                    break;
+                }
+            }
+        }
+    }
+
+    // Dodge obstacles in current row
+    if (pRow > 0 && pRow < ROWS) {
+        const lane = lanes[pRow];
+        if (lane.type !== 'safe' && lane.type !== 'gates') {
+            for (const obs of lane.obstacles) {
+                const obsLeft = obs.x - 12;
+                const obsRight = obs.x + obs.w + 12;
+                if (game.px + CELL > obsLeft && game.px < obsRight) {
+                    const obsCenter = obs.x + obs.w / 2;
+                    safeMoveDir = game.px < obsCenter ? -1 : 1;
+                    dangerAhead = true;
+                    break;
+                }
+            }
+        }
+    }
+
+    // Move every few frames
+    if (attractFrameCount % 10 !== 0) return;
+
+    if (dangerAhead && safeMoveDir !== 0) {
+        movePlayer(safeMoveDir, 0);
+    } else {
+        const dx = targetX - game.px;
+        if (Math.abs(dx) > CELL) {
+            movePlayer(dx > 0 ? 1 : -1, 0);
+        } else {
+            movePlayer(0, -1);
+        }
+    }
+}
+
+// Listen for any real input to break attract mode
+function onAttractInput(e) {
+    if (attractMode) {
+        _attractBreakFlag = true;
+        if (e.type === 'click' || e.type === 'touchstart') {
+            _attractStartAfterBreak = true;
+        }
+    }
+}
+document.addEventListener('keydown', onAttractInput, true);
+canvas.addEventListener('click', onAttractInput, true);
+canvas.addEventListener('touchstart', onAttractInput, true);
+swipePad.addEventListener('touchstart', onAttractInput, true);
+
 // Init
 async function init() {
     await Promise.all([
